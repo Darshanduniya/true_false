@@ -1,0 +1,93 @@
+from airflow import DAG
+from airflow.operators.python import PythonOperator, ShortCircuitOperator
+from airflow.utils.dates import days_ago
+
+# Define the Python functions for the tasks
+def get_industry_details(**kwargs):
+    # Mocked industry details with use_base_ince value
+    industry_details = {"use_base_ince": True}  # Change to True or False
+    return industry_details
+
+# Update: Corrected ShortCircuitOperator callable
+def check_base_ince_callable(ti):
+    # Pull the value from XCom
+    industry_details = ti.xcom_pull(task_ids='get_industry_details')
+    return industry_details["use_base_ince"]
+
+def task1(**kwargs):
+    print("Running task1")
+
+def task2(**kwargs):
+    print("Running task2")
+
+def task3(**kwargs):
+    print("Running task3")
+
+def task4(**kwargs):
+    print("Running task4")
+
+def task5(**kwargs):
+    print("Running task5")
+
+# Create the DAG
+dag = DAG(
+    dag_id='base_ince_dag',
+    start_date=days_ago(1),
+    schedule_interval=None,
+    catchup=False,
+)
+
+# Task to get industry details
+get_industry_details_task = PythonOperator(
+    task_id='get_industry_details',
+    python_callable=get_industry_details,
+    dag=dag
+)
+
+# ShortCircuitOperator to check the value of use_base_ince
+check_base_ince_task = ShortCircuitOperator(
+    task_id="check_base_ince",
+    python_callable=check_base_ince_callable,  # Updated to correct callable
+    provide_context=True,  # Enables 'ti' to be passed in kwargs
+    dag=dag
+)
+
+# Define other tasks
+task1 = PythonOperator(
+    task_id='task1',
+    python_callable=task1,
+    dag=dag
+)
+
+task2 = PythonOperator(
+    task_id='task2',
+    python_callable=task2,
+    dag=dag
+)
+
+task3 = PythonOperator(
+    task_id='task3',
+    python_callable=task3,
+    dag=dag
+)
+
+task4 = PythonOperator(
+    task_id='task4',
+    python_callable=task4,
+    dag=dag
+)
+
+task5 = PythonOperator(
+    task_id='task5',
+    python_callable=task5,
+    dag=dag
+)
+
+# Set dependencies
+get_industry_details_task >> check_base_ince_task
+
+# If use_base_ince is True, tasks 1-4 will run in sequence, and task5 will run after task4
+check_base_ince_task >> task1 >> task2 >> task3 >> task4 >> task5
+
+# If use_base_ince is False, tasks 1-4 will be skipped and only task5 will run
+check_base_ince_task >> task5
